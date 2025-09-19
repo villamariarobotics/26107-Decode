@@ -15,5 +15,6 @@ public class MainTeleop extends OpMode {
     @Override
     public void loop() {
     TelemetryUtils.update();
+    TelemetryUtils.logVoltage(hardwareMap);
     }
 }
