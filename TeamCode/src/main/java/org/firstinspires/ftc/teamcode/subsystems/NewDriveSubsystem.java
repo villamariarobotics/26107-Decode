@@ -4,20 +4,19 @@ import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
+
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.IMU;
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;import org.firstinspires.ftc.teamcode.utils.PIDController;
 
 @Config
-
 public class NewDriveSubsystem {
+    public static boolean FieldOriented = true;
+
     private DcMotor fl, fr, bl,br;
     IMU imu;
 
@@ -26,6 +25,8 @@ public class NewDriveSubsystem {
         fr = hwMap.get(DcMotorEx.class, "right_front_motor");
         bl = hwMap.get(DcMotorEx.class, "left_back_motor");
         br = hwMap.get(DcMotorEx.class, "right_back_motor");
+
+
 
         fl.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         fr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -42,35 +43,54 @@ public class NewDriveSubsystem {
         imu.initialize(parameters);
     }
 
-    public void drive(Gamepad controller){
+        public void drive (Gamepad controller){
 
-        double y  = -controller.left_stick_y;
-        double x = controller.left_stick_x;
-        double rx  = controller.right_stick_x;
+        if (FieldOriented) {
+            double y = -controller.left_stick_y;
+            double x = controller.left_stick_x;
+            double rx = controller.right_stick_x;
 
-        if (controller.options) {
-            imu.resetYaw();
+            if (controller.options) {
+                imu.resetYaw();
+            }
+
+            double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+
+            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+
+            rotX = rotX * 1.1; // Counteract imperfect strafing
+
+            double denominator = Math.max(Math.abs(rotY) + Math.abs(rotY) + Math.abs(rx), 1);
+            double left_front_power = (rotY + rotX + rx) / denominator;
+            double right_front_power = (rotY - rotX - rx) / denominator;
+            double left_back_power = (rotY - rotX + rx) / denominator;
+            double right_back_power = (rotY + rotX - rx) / denominator;
+
+
+            TelemetryUtils.addData("Front Left Power", left_front_power);
+            TelemetryUtils.addData("Front Right Power", right_front_power);
+            TelemetryUtils.addData("Back Left Power", left_back_power);
+            TelemetryUtils.addData("Back Right Power", right_back_power);
+
+            fl.setPower(left_front_power);
+            fr.setPower(right_front_power);
+            bl.setPower(left_back_power);
+            br.setPower(right_back_power);
+        } else {
+            double drive  = controller.left_stick_y;
+            double strafe = -controller.left_stick_x;
+            double twist  = -controller.right_stick_x;
+            double left_front_power =  (drive + strafe + twist);
+            double right_front_power = (drive - strafe - twist);
+            double left_back_power = (drive - strafe + twist);
+            double right_back_power = (drive + strafe - twist);
+            fl.setPower(left_front_power);
+            fr.setPower(right_front_power);
+            bl.setPower(left_back_power);
+            br.setPower(right_back_power);
         }
 
-        double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-
-        double rotX = x * Math.cos (-botHeading) - y * Math.sin(-botHeading);
-        double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
-
-        rotX = rotX * 1.1; // Counteract imperfect strafing
-
-        double denominator = Math.max(Math.abs(rotY) + Math.abs(rotY) + Math.abs(rx), 1);
-        double left_front_power =  (rotY + rotX + rx) / denominator;
-        double right_front_power = (rotY - rotX - rx) / denominator;
-        double left_back_power = (rotY - rotX + rx) / denominator;
-        double right_back_power = (rotY + rotX - rx) / denominator;
-
-
-        fl.setPower(left_front_power);
-        fr.setPower(right_front_power);
-        bl.setPower(left_back_power);
-        br.setPower(right_back_power);
     }
-
 
 }
