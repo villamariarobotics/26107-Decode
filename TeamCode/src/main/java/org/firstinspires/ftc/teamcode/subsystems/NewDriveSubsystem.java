@@ -6,7 +6,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -18,7 +17,6 @@ import org.firstinspires.ftc.teamcode.utils.PIDController;
 
 
 import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 @Config
@@ -33,8 +31,10 @@ public class NewDriveSubsystem {
     public static double kP = 0.05;
     public static double kI = 0.0001;
     public static double kD = 0.005;
+    private static final double ROT_TOLERANCE_DEG = 1.0;
+    private static final double MIN_ROT_POWER = 0.05;
 
-    private double targetHeading = 0.0; // radians
+//    private double targetHeading = 0.0; // radians
 
     public void initialize(HardwareMap hwMap) {
         fl = hwMap.get(DcMotorEx.class, "left_front_motor");
@@ -45,19 +45,15 @@ public class NewDriveSubsystem {
         // Initialize the heading PID controller
         headingPID = new PIDController(kP, kI, kD, true);
         headingPID.setOutputLimits(-1, 1);
-        targetHeading = 0.0;
-
         limelight = hwMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
         limelight.start();
-
 
         // Disable built-in velocity control
         fl.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         fr.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         bl.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         br.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-
 
         fl.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         fr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -75,50 +71,78 @@ public class NewDriveSubsystem {
     }
 
 
-    public double LimelightFunc (){
-
-        LLStatus status = limelight.getStatus();
-        TelemetryUtils.addData("LL name:", status.getName());
-
+    public boolean alignHeadingToAprilTag (double maxMotorPower){
+        // Ensure PID gains are updated for FTC Dashboard
+        headingPID.setGains(kP, kI, kD);
         LLResult result = limelight.getLatestResult();
-        if (result.isValid()) {
-            // Access general information
-            Pose3D botpose = result.getBotpose();
-            double captureLatency = result.getCaptureLatency();
-            double targetingLatency = result.getTargetingLatency();
-            double parseLatency = result.getParseLatency();
-            double txResult = result.getTx();
-            return Math.toRadians(-txResult);
 
-//            TelemetryUtils.addData("LL Latency", captureLatency + targetingLatency);
-//            TelemetryUtils.addData("Parse Latency", parseLatency);
-//            TelemetryUtils.addData("PythonOutput", java.util.Arrays.toString(result.getPythonOutput()));
+
+        // --- 0. Check for Target Visibility ---
+        if (!result.isValid()) {
+
+            headingPID.reset();
+            fl.setPower(0);
+            fr.setPower(0);
+            bl.setPower(0);
+            br.setPower(0);
+            TelemetryUtils.addData("Alignment Status", "TARGET NOT FOUND");
+            return false;
         }
-        return 0;
+        double rotationErrorDegrees = result.getTx();
 
+        //  Rotation (Yaw) Control: PID Calculation
+        double rotPower = headingPID.calculate(rotationErrorDegrees);
+        // Translation Powers (0 because only aligning rotationally for now)
+        double forwardPower = 0.0;
+        double strafePower = 0.0;
+        boolean alignedRotation = Math.abs(rotationErrorDegrees) < ROT_TOLERANCE_DEG;
 
+        if (alignedRotation) {
+            // Alignment is complete: STOP
+            rotPower = 0.0;
+            headingPID.reset();
+            TelemetryUtils.addData("Alignment Status", "ALIGNED");
+        } else {
+            // Still aligning: APPLY PID POWER
+            // Clamp rotation power to the maximum inputted to alignment function
+            rotPower = Math.min(Math.max(rotPower, -maxMotorPower), maxMotorPower);
+            // Apply Deadband (minimum speed to overcome static friction)
+            if (Math.abs(rotPower) < MIN_ROT_POWER) {
+                rotPower = Math.signum(rotPower) * MIN_ROT_POWER;
+            }
+            TelemetryUtils.addData("Alignment Status", "ALIGNING");
+        }
+        double y = forwardPower;
+        double x = strafePower;
+        double rx = rotPower;
+        // denominator not really needed cause its only rotation but like ¯\_(ツ)_/¯
+        double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1.0);
 
+        double left_front_power  = (y + x + rx) / denominator;
+        double right_front_power = (y - x - rx) / denominator;
+        double left_back_power   = (y - x + rx) / denominator;
+        double right_back_power  = (y + x - rx) / denominator;
+
+        fl.setPower(left_front_power);
+        fr.setPower(right_front_power);
+        bl.setPower(left_back_power);
+        br.setPower(right_back_power);
+
+        TelemetryUtils.addData("Limelight tx Error", rotationErrorDegrees);
+        TelemetryUtils.addData("LL Rotational Power (rx)", rotPower);
+
+        return alignedRotation;
     }
-        public void drive (Gamepad controller){
 
-            // Update PID gains from dashboard live
-//            headingPID.setGains(kP, kI, kD);
+    public void drive (Gamepad controller){
 
         if (FieldOriented) {
-
-            double targetHeading = LimelightFunc();
-            double y = 0;
-            double x = 0;
-            double rx = headingPID.output(targetHeading, 0);
-            TelemetryUtils.addData("target heading", targetHeading);
-            TelemetryUtils.addData("tx", rx);
+            double y = -controller.left_stick_y;
+            double x = controller.left_stick_x;
+            double rx = controller.right_stick_x;
 
 
-            if (controller.options) {
-                imu.resetYaw();
-            }
-
-            double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            double botHeading = getHeading();
 
             double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
             double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
@@ -126,20 +150,10 @@ public class NewDriveSubsystem {
             rotX = rotX * 1.1; // Counteract imperfect strafing
 
             double denominator = Math.max(Math.abs(rotY) + Math.abs(rotY) + Math.abs(rx), 1);
-
-
             double left_front_power = (rotY + rotX + rx) / denominator;
             double right_front_power = (rotY - rotX - rx) / denominator;
             double left_back_power = (rotY - rotX + rx) / denominator;
             double right_back_power = (rotY + rotX - rx) / denominator;
-
-            if (rx == 0){
-
-                 left_front_power = 0;
-                 right_front_power = 0;
-                 left_back_power = 0;
-                 right_back_power = 0;
-            }
 
 
             TelemetryUtils.addData("Front Left Power", left_front_power);
@@ -166,9 +180,12 @@ public class NewDriveSubsystem {
         }
 
     }
-
     public double getHeading() {
         return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+    }
+
+    public void resetHeading(){
+        imu.resetYaw();
     }
 
 }

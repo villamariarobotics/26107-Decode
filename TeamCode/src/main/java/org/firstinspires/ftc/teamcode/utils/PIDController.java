@@ -51,6 +51,39 @@ public class PIDController {
         return clamp(output, outputMin, outputMax);
     }
 
+
+    /** * Calculate PID output given a pre-calculated error.
+     * This is useful when the sensor (like Limelight tx) provides the error directly.
+     * NOTE: This assumes the input 'error' is in the units expected by your gains (e.g., degrees).
+     */
+    public double calculate(double error) {
+        // If angle wrapping was enabled, we need to wrap the error here
+        // (though for Limelight tx, angleWrap is usually false)
+        if (angleWrap) {
+            error = wrapAngle(error);
+        }
+
+        double dt = timer.seconds();
+        timer.reset();
+
+        if (dt <= 0) dt = 1e-6; // Prevent division by zero
+
+        // Integral with anti-windup (same as in output method)
+        integral += error * dt;
+        integral = clamp(integral, -integralMax, integralMax);
+
+        // Derivative (same as in output method)
+        double derivative = (error - lastError) / dt;
+
+        // PID output
+        double output = (Kp * error) + (Ki * integral) + (Kd * derivative);
+
+        lastError = error;
+
+        // Clamp output
+        return clamp(output, outputMin, outputMax);
+    }
+
     /** Reset integral, derivative history */
     public void reset() {
         integral = 0;
