@@ -37,11 +37,11 @@ public class NewDriveSubsystem {
     private Limelight3A limelight;
     private PIDController headingPID;
     // PID coefficients (for heading hold)
-    public static double kP = 0.05;
-    public static double kI = 0.0001;
-    public static double kD = 0.005;
-    private static final double ROT_TOLERANCE_DEG = 1.0;
-    private static final double MIN_ROT_POWER = 0.05;
+    public static double kP = 0.04;
+    public static double kI = 0.00;
+    public static double kD = 0.0005;
+    public static  double ROT_TOLERANCE_DEG = 2;
+    public static  double MIN_ROT_POWER = 0.01;
 
 //    private double targetHeading = 0.0; // radians
 
@@ -52,7 +52,7 @@ public class NewDriveSubsystem {
         br = hwMap.get(DcMotorEx.class, "right_back_motor");
 
         // Initialize the heading PID controller
-        headingPID = new PIDController(kP, kI, kD, true);
+        headingPID = new PIDController(kP, kI, kD, false);
         headingPID.setOutputLimits(-1, 1);
         limelight = hwMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
@@ -73,9 +73,9 @@ public class NewDriveSubsystem {
 
 
         odo = hwMap.get(GoBildaPinpointDriver.class,"pinpoint");
-        odo.setOffsets(70, -184.912, DistanceUnit.MM); //! FIX OFFSETS!!!!!
+        odo.setOffsets(44, 0, DistanceUnit.MM);
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);  //! Check these directions with telemetry!!!
+        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.REVERSED);  //! Check these directions with telemetry!!!
         odo.resetPosAndIMU();
         TelemetryUtils.addData("Odo status", "initialized");
         TelemetryUtils.debug("Odo X offset", odo.getXOffset(DistanceUnit.MM));
@@ -102,6 +102,9 @@ public class NewDriveSubsystem {
         Pose2D pos = odo.getPosition();
         String data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}", pos.getX(DistanceUnit.MM), pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
         TelemetryUtils.addData("Odo Position", data);
+        TelemetryUtils.addData("Odo x pos", pos.getX(DistanceUnit.MM));
+        TelemetryUtils.addData("Odo y pos", pos.getY(DistanceUnit.MM));
+        TelemetryUtils.addData("Odo heading", pos.getHeading(AngleUnit.DEGREES));
         String velocity = String.format(Locale.US,"{XVel: %.3f, YVel: %.3f, HVel: %.3f}", odo.getVelX(DistanceUnit.MM), odo.getVelY(DistanceUnit.MM), odo.getHeadingVelocity(UnnormalizedAngleUnit.DEGREES));
         TelemetryUtils.addData(" Odo Velocity", velocity);
 
@@ -126,7 +129,8 @@ public class NewDriveSubsystem {
             TelemetryUtils.addData("Alignment Status", "TARGET NOT FOUND");
             return false;
         }
-        double rotationErrorDegrees = result.getTx();
+        double rotationErrorDegrees = -result.getTx();
+        TelemetryUtils.addData("rot error",rotationErrorDegrees);
 
         //  Rotation (Yaw) Control: PID Calculation
         double rotPower = headingPID.calculate(rotationErrorDegrees);
