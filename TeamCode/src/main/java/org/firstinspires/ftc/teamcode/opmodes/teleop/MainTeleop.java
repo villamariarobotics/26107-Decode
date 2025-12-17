@@ -22,6 +22,7 @@ public class MainTeleop extends OpMode {
     public void loop() {
     TelemetryUtils.update();
     TelemetryUtils.logVoltage(hardwareMap);
+    drive_base.odoTestFunc();
     drive_base.drive(gamepad1);
     if (gamepad1.a){
         drive_base.alignHeadingToAprilTag(1);

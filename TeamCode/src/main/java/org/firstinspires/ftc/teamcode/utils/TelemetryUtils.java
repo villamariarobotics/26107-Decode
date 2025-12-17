@@ -33,6 +33,18 @@ public class TelemetryUtils {
         }
     }
 
+    public static void debug(String line) {
+        String debugKey = "[DEBUG] " + line;
+        if (dsTelemetry != null) dsTelemetry.addData(debugKey, "");
+        if (dashboardTelemetry != null) dashboardTelemetry.addData(debugKey, "");
+    }
+
+    public static void debug(String key, Object value) {
+        String debugKey = "[DEBUG] " + key;
+        if (dsTelemetry != null) dsTelemetry.addData(debugKey, value);
+        if (dashboardTelemetry != null) dashboardTelemetry.addData(debugKey, value);
+    }
+
 
     public static void update() {
         if (dsTelemetry != null) dsTelemetry.update();

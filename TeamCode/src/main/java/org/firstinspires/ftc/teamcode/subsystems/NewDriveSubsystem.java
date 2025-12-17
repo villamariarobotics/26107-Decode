@@ -2,10 +2,16 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+
+import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -13,16 +19,19 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+
 import org.firstinspires.ftc.teamcode.utils.PIDController;
 
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 
+import java.util.Locale;
+
 @Config
 public class NewDriveSubsystem {
     public static boolean FieldOriented = true;
-
+    GoBildaPinpointDriver odo;
     private DcMotor fl, fr, bl,br;
     IMU imu;
     private Limelight3A limelight;
@@ -62,15 +71,44 @@ public class NewDriveSubsystem {
         fr.setDirection(DcMotorSimple.Direction.REVERSE);
         br.setDirection(DcMotorSimple.Direction.REVERSE);
 
+
+        odo = hwMap.get(GoBildaPinpointDriver.class,"pinpoint");
+        odo.setOffsets(70, -184.912, DistanceUnit.MM); //! FIX OFFSETS!!!!!
+        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);  //! Check these directions with telemetry!!!
+        odo.resetPosAndIMU();
+        TelemetryUtils.addData("Odo status", "initialized");
+        TelemetryUtils.debug("Odo X offset", odo.getXOffset(DistanceUnit.MM));
+        TelemetryUtils.debug("Odo Y offset", odo.getYOffset(DistanceUnit.MM));
+        TelemetryUtils.debug("Odo Heading Scalar", odo.getYawScalar());
+
+
+
         imu = hwMap.get(IMU.class,"imu");
         IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.UP,
                 RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
         ));
         imu.initialize(parameters);
+
+
+    }
+
+    public void odoTestFunc(){
+        odo.update();
+        TelemetryUtils.addData("Odo Status", odo.getDeviceStatus());
+        TelemetryUtils.debug("Pinpoint Frequency", odo.getFrequency()); //prints/gets the current refresh rate of the Pinpoint
+
+        Pose2D pos = odo.getPosition();
+        String data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}", pos.getX(DistanceUnit.MM), pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
+        TelemetryUtils.addData("Odo Position", data);
+        String velocity = String.format(Locale.US,"{XVel: %.3f, YVel: %.3f, HVel: %.3f}", odo.getVelX(DistanceUnit.MM), odo.getVelY(DistanceUnit.MM), odo.getHeadingVelocity(UnnormalizedAngleUnit.DEGREES));
+        TelemetryUtils.addData(" Odo Velocity", velocity);
+
     }
 
 
+    @SuppressWarnings({"UnnecessaryLocalVariable", "UnusedReturnValue"})
     public boolean alignHeadingToAprilTag (double maxMotorPower){
         // Ensure PID gains are updated for FTC Dashboard
         headingPID.setGains(kP, kI, kD);
