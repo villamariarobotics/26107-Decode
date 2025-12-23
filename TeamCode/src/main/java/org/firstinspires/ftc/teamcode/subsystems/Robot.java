@@ -1,0 +1,39 @@
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.hardware.lynx.LynxModule;
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
+import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
+import java.util.List;
+
+public class Robot {
+    // Subsystems
+    public DriveSubsystem drive = new DriveSubsystem();
+
+    // Hardware Hubs for Bulk Reads
+    private List<LynxModule> allHubs;
+
+    public void init(HardwareMap hwMap, Telemetry telemetry) {
+        // 1. Initialize Telemetry Utility
+        TelemetryUtils.init(telemetry);
+
+        // 2. Initialize Drive Subsystem
+        drive.initialize(hwMap);
+
+        // 3. Set up Bulk Reads for all REV Hubs
+        allHubs = hwMap.getAll(LynxModule.class);
+        for (LynxModule hub : allHubs) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
+        }
+    }
+
+    /**
+     * Call this at the start of every loop() to refresh sensor data.
+     */
+    public void clearCache() {
+        for (LynxModule hub : allHubs) {
+            hub.clearBulkCache();
+        }
+    }
+}

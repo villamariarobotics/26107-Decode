@@ -1,35 +1,43 @@
 package org.firstinspires.ftc.teamcode.opmodes.teleop;
-
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-
-import org.firstinspires.ftc.teamcode.subsystems.NewDriveSubsystem;
+import org.firstinspires.ftc.teamcode.Robot;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
 
 
-@TeleOp(name = "drive subsystem")
+@TeleOp(name = "Main Teleop")
 public class MainTeleop extends OpMode {
 
-    NewDriveSubsystem drive_base = new NewDriveSubsystem();
+    // Using the Robot container instead of individual subsystems
+    Robot robot = new Robot();
 
     @Override
     public void init() {
-        TelemetryUtils.initialize(telemetry); // pass the OpMode telemetry
-        drive_base.initialize(hardwareMap);
+        // Initializes everything: Subsystems, Hubs, and Telemetry
+        robot.init(hardwareMap, telemetry);
     }
 
     @Override
     public void loop() {
-    TelemetryUtils.update();
-    TelemetryUtils.logVoltage(hardwareMap);
-    drive_base.odoTestFunc();
-    drive_base.drive(gamepad1);
-        if (gamepad1.a) {
-            drive_base.alignHeadingToAprilTag(1);
+        TelemetryUtils.update();
+        //  Always clear bulk cache at the start of each loop
+        robot.clearCache();
 
+        //Handle Subsystem Logic
+        robot.drive.updateOdo();
+        robot.drive.gamepadDrive(gamepad1);
+
+        // Logic for auto-alignment
+        if (gamepad1.a) {
+            robot.drive.alignHeadingToAprilTag(1.0);
         }
-    if (gamepad1.options){
-        drive_base.resetHeading();
-    }
+
+        // Reset heading logic
+        if (gamepad1.options) {
+            robot.drive.resetHeading();
+        }
+
+        //Update Telemetry
+        TelemetryUtils.update();
     }
 }
