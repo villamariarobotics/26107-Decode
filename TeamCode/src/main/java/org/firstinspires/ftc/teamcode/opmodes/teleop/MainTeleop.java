@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmodes.teleop;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import org.firstinspires.ftc.teamcode.Robot;
+import org.firstinspires.ftc.teamcode.subsystems.Robot;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
 
 
@@ -26,6 +26,7 @@ public class MainTeleop extends OpMode {
         //Handle Subsystem Logic
         robot.drive.updateOdo();
         robot.drive.gamepadDrive(gamepad1);
+        robot.drive.logMotorCurrent();
 
         // Logic for auto-alignment
         if (gamepad1.a) {

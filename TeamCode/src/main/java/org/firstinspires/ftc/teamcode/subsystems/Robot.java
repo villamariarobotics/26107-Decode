@@ -1,9 +1,8 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.hardware.lynx.LynxModule;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
 import java.util.List;
 
@@ -15,13 +14,13 @@ public class Robot {
     private List<LynxModule> allHubs;
 
     public void init(HardwareMap hwMap, Telemetry telemetry) {
-        // 1. Initialize Telemetry Utility
+        //Initialize Telemetry Utility
         TelemetryUtils.init(telemetry);
 
-        // 2. Initialize Drive Subsystem
+        // Initialize Drive Subsystem
         drive.initialize(hwMap);
 
-        // 3. Set up Bulk Reads for all REV Hubs
+        // Set up Bulk Reads for all REV Hubs
         allHubs = hwMap.getAll(LynxModule.class);
         for (LynxModule hub : allHubs) {
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);

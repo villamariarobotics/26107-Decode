@@ -3,38 +3,35 @@ package org.firstinspires.ftc.teamcode.subsystems;
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.configurables.annotations.Sorter;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.utils.PIDController;
 import org.firstinspires.ftc.teamcode.utils.LimelightUtils;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 @Configurable
 public class DriveSubsystem {
 
     // Hardware Variables
+    private DcMotorEx fl, fr, bl, br;
     private GoBildaPinpointDriver odo;
-    private DcMotor fl, fr, bl, br;
     private Limelight3A limelight;
+    private VoltageSensor batteryVoltageSensor;
     private PIDController headingPID;
 
     // Configuration Constants (Static for @Configurable)
-    @Sorter(sort = 0)
-    public static boolean FieldOriented = true;
-    @Sorter(sort = 1)
-    public static double kP = 0.04, kI = 0.0, kD = 0.0005;
-    @Sorter(sort = 4)
-    public static double ROT_TOLERANCE_DEG = 2;
-    @Sorter(sort = 5)
-    public static double MIN_ROT_POWER = 0.01;
+    @Sorter(sort = 0) public static boolean FieldOriented = true;
+    @Sorter(sort = 1) public static double kP = 0.04, kI = 0.0, kD = 0.0005;
+    @Sorter(sort = 4) public static double ROT_TOLERANCE_DEG = 2;
+    @Sorter(sort = 5) public static double MIN_ROT_POWER = 0.01;
 
     public void initialize(HardwareMap hwMap) {
         // Motor Setup
@@ -43,18 +40,18 @@ public class DriveSubsystem {
         bl = hwMap.get(DcMotorEx.class, "left_back_motor");
         br = hwMap.get(DcMotorEx.class, "right_back_motor");
 
-        fl.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        fr.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        bl.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        br.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        fl.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        fr.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        bl.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        br.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
-        fl.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        fr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        bl.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        br.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        fl.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        fr.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        bl.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        br.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
-        fr.setDirection(DcMotorSimple.Direction.REVERSE);
-        br.setDirection(DcMotorSimple.Direction.REVERSE);
+        fr.setDirection(DcMotorEx.Direction.REVERSE);
+        br.setDirection(DcMotorEx.Direction.REVERSE);
 
         // Pinpoint Setup
         odo = hwMap.get(GoBildaPinpointDriver.class, "pinpoint");
@@ -67,6 +64,9 @@ public class DriveSubsystem {
         limelight = hwMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
         limelight.start();
+
+        // Battery Voltage Sensor
+        batteryVoltageSensor = hwMap.voltageSensor.iterator().next();
 
         // PID Utils (currently only for heading alignment)
         headingPID = new PIDController(kP, kI, kD, false);
@@ -109,22 +109,34 @@ public class DriveSubsystem {
 
     /**
      * Helper method to consolidate the motor power math
+     *
      */
     private void applyMotorPower(double y, double x, double rx) {
+        double currentVoltage = batteryVoltageSensor.getVoltage();
+        // We cap the voltage at 12 to ensure we don't try to "overdrive"
+        // when the battery is low, which could cause brownouts.
+        double voltageScale = 12.0 / currentVoltage;
         double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1.0);
+        double scale = voltageScale / denominator;
 
-        fl.setPower((y + x + rx) / denominator);
-        fr.setPower((y - x - rx) / denominator);
-        bl.setPower((y - x + rx) / denominator);
-        br.setPower((y + x - rx) / denominator);
+        fl.setPower((y + x + rx) * scale);
+        fr.setPower((y - x - rx) * scale);
+        bl.setPower((y - x + rx) * scale);
+        br.setPower((y + x - rx) * scale);
     }
 
     public void gamepadDrive(Gamepad controller) {
 
-        // Added a tiny deadband to prevent robot "humming" when sticks aren't touched
-        double x = (Math.abs(controller.left_stick_x) > 0.05) ? controller.left_stick_x : 0;
-        double y = (Math.abs(controller.left_stick_y) > 0.05) ? -controller.left_stick_y : 0;
-        double rx = (Math.abs(controller.right_stick_x) > 0.05) ? controller.right_stick_x : 0;
+        // Get raw values and apply deadband
+        double rawX = (Math.abs(controller.left_stick_x) > 0.05) ? controller.left_stick_x : 0;
+        double rawY = (Math.abs(controller.left_stick_y) > 0.05) ? -controller.left_stick_y : 0;
+        double rawRx = (Math.abs(controller.right_stick_x) > 0.05) ? controller.right_stick_x : 0;
+
+        // Exponential Shaping (Cubing the inputs)
+        // Cubing preserves the negative/positive sign automatically
+        double x = Math.pow(rawX, 3);
+        double y = Math.pow(rawY, 3);
+        double rx = Math.pow(rawRx, 3);
 
         if (FieldOriented) {
             double botHeading = getHeading();
@@ -136,6 +148,31 @@ public class DriveSubsystem {
             applyMotorPower(y, x, rx);
         }
 
+    }
+
+    public void logMotorCurrent() {
+        double flC = fl.getCurrent(CurrentUnit.AMPS);
+        double frC = fr.getCurrent(CurrentUnit.AMPS);
+        double blC = bl.getCurrent(CurrentUnit.AMPS);
+        double brC = br.getCurrent(CurrentUnit.AMPS);
+
+        double totalCurr = flC + frC + blC + brC;
+
+        // Log individual for debug diagnostics
+        TelemetryUtils.debug("FL/FR Amps", String.format("%.1f / %.1f", flC, frC));
+        TelemetryUtils.debug("BL/BR Amps", String.format("%.1f / %.1f", blC, brC));
+        TelemetryUtils.addData("Total Drive Amps", totalCurr);
+
+        // Check for whole-robot stall (Average)
+        if ((totalCurr / 4.0) > 8.0) {
+            TelemetryUtils.addData("WARNING", "ROBOT STALL DETECTED");
+        }
+
+        // Check for single-motor failure (Individual)
+        // If one motor is significantly higher than the average, it's a mechanical bind
+        if (flC > 10.0 || frC > 10.0 || blC > 10.0 || brC > 10.0) {
+            TelemetryUtils.addData("CRITICAL", "SINGLE MOTOR OVERLOAD");
+        }
     }
 
     public double getHeading() {
