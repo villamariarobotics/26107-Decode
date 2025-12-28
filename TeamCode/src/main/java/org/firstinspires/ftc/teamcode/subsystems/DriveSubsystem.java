@@ -181,7 +181,7 @@ public class DriveSubsystem {
         } else {
             isLocking = false;
         }
-        
+
         if (FieldOriented) {
             double botHeading = getHeading();
             double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
