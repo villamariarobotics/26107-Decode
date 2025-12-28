@@ -1,13 +1,15 @@
 package org.firstinspires.ftc.teamcode.opmodes.teleop;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
 import org.firstinspires.ftc.teamcode.subsystems.Robot;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
 
 
 @TeleOp(name = "Main Teleop")
 public class MainTeleop extends OpMode {
-
+    private ElapsedTime loopTimer = new ElapsedTime();
     // Using the Robot container instead of individual subsystems
     Robot robot = new Robot();
 
@@ -18,19 +20,29 @@ public class MainTeleop extends OpMode {
     }
 
     @Override
-    public void loop() {
-        TelemetryUtils.update();
-        //  Always clear bulk cache at the start of each loop
-        robot.clearCache();
+    public void start() {
+        loopTimer.reset();
+    }
 
-        //Handle Subsystem Logic
+
+    @Override
+    public void loop() {
+
+        // Refresh Data
+        robot.clearCache();
         robot.drive.updateOdo();
-        robot.drive.gamepadDrive(gamepad1);
         robot.drive.logMotorCurrent();
+
+
+
+        // Control Logic
 
         // Logic for auto-alignment
         if (gamepad1.a) {
             robot.drive.alignHeadingToAprilTag(1.0);
+        } else {
+            // Normal driving
+            robot.drive.gamepadDrive(gamepad1);
         }
 
         // Reset heading logic
@@ -38,7 +50,10 @@ public class MainTeleop extends OpMode {
             robot.drive.resetHeading();
         }
 
-        //Update Telemetry
-        TelemetryUtils.update();
+        // Telemetry
+        double loopTime = loopTimer.milliseconds();
+        loopTimer.reset();
+        TelemetryUtils.addData("Loop Hz", 1000.0 / loopTime);
+        TelemetryUtils.update(); // Move to bottom
     }
 }

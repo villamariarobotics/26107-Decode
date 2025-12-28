@@ -16,6 +16,7 @@ public class TelemetryUtils {
     public static void init(Telemetry opModeTelemetry) {
         dsTelemetry = opModeTelemetry;
         dashboardTelemetry = PanelsTelemetry.INSTANCE.getTelemetry();
+        dsTelemetry.setMsTransmissionInterval(50);
     }
 
 

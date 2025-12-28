@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
+import android.annotation.SuppressLint;
+
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.configurables.annotations.Sorter;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
@@ -11,10 +13,12 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.utils.PIDController;
-import org.firstinspires.ftc.teamcode.utils.LimelightUtils;
+
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 @Configurable
@@ -26,12 +30,17 @@ public class DriveSubsystem {
     private Limelight3A limelight;
     private VoltageSensor batteryVoltageSensor;
     private PIDController headingPID;
+    private final ElapsedTime visionTimer = new ElapsedTime();
+    private double lastKnownTx = 0;
+    private double targetHeading = 0;
+    private boolean isLocking = false;
 
     // Configuration Constants (Static for @Configurable)
     @Sorter(sort = 0) public static boolean FieldOriented = true;
     @Sorter(sort = 1) public static double kP = 0.04, kI = 0.0, kD = 0.0005;
     @Sorter(sort = 4) public static double ROT_TOLERANCE_DEG = 2;
     @Sorter(sort = 5) public static double MIN_ROT_POWER = 0.01;
+    @Sorter(sort = 6) public static double VISION_TIMEOUT_MS = 150;
 
     public void initialize(HardwareMap hwMap) {
         // Motor Setup
@@ -89,18 +98,39 @@ public class DriveSubsystem {
      * @param maxMotorPower The maximum motor power to apply for rotation.
      * @return true if aligned within tolerance, false otherwise.
      */
-
     public boolean alignHeadingToAprilTag(double maxMotorPower) {
         headingPID.setGains(kP, kI, kD);
         LLResult result = limelight.getLatestResult();
 
-        double rotPower = LimelightUtils.calculateRotationPower(
-                result, headingPID, maxMotorPower, MIN_ROT_POWER, ROT_TOLERANCE_DEG
-        );
+        double error;
+        boolean targetFound;
 
-        boolean aligned = LimelightUtils.isAligned(result, ROT_TOLERANCE_DEG);
-        TelemetryUtils.addData("Alignment Status", !result.isValid() ? "NO TARGET" : (aligned ? "ALIGNED" : "ALIGNING"));
+        if (result.isValid()) {
+            // if we see the tag Update our "Last Known" data
+            error = -result.getTx();
+            lastKnownTx = error;
+            visionTimer.reset(); // Restart the "stale data" clock
+            targetFound = true;
+        } else if (visionTimer.milliseconds() < VISION_TIMEOUT_MS) {
+            // We LOST the tag, but it was very recent. Use the last known error.
+            error = lastKnownTx;
+            targetFound = true; // Pretend we still have it for the PID
+        } else {
+            // Target has been gone too long. Stop moving.
+            error = 0;
+            targetFound = false;
+        }
 
+        // Calculate power using the PID (passing in our error)
+        double rotPower = headingPID.calculate(error);
+
+        // Apply constraints
+        if (Math.abs(rotPower) < MIN_ROT_POWER) rotPower = 0;
+        rotPower = Math.max(-maxMotorPower, Math.min(maxMotorPower, rotPower));
+
+        boolean aligned = Math.abs(error) < ROT_TOLERANCE_DEG && result.isValid();
+
+        TelemetryUtils.addData("Vision Status", targetFound ? (result.isValid() ? "TRACKING" : "STALE DATA") : "LOST");
         // Translation Powers = 0 because only aligning rotationally (for now)
         applyMotorPower(0, 0, rotPower);
         return aligned;
@@ -126,30 +156,47 @@ public class DriveSubsystem {
     }
 
     public void gamepadDrive(Gamepad controller) {
-
-        // Get raw values and apply deadband
+        // Get raw values and apply deadband/cubing
         double rawX = (Math.abs(controller.left_stick_x) > 0.05) ? controller.left_stick_x : 0;
         double rawY = (Math.abs(controller.left_stick_y) > 0.05) ? -controller.left_stick_y : 0;
         double rawRx = (Math.abs(controller.right_stick_x) > 0.05) ? controller.right_stick_x : 0;
-
         // Exponential Shaping (Cubing the inputs)
         // Cubing preserves the negative/positive sign automatically
         double x = Math.pow(rawX, 3);
         double y = Math.pow(rawY, 3);
         double rx = Math.pow(rawRx, 3);
 
+        double currentHeadingDeg = Math.toDegrees(getHeading());
+
+        // Heading Lock Logic
+        if (Math.abs(rx) > 0.01) {
+            // Driver is actively turning: Update target to current heading
+            targetHeading = currentHeadingDeg;
+            isLocking = false;
+        } else if (Math.abs(x) > 0.01 || Math.abs(y) > 0.01) {
+            // Driver is moving but NOT turning: Use PID to maintain heading
+            double error = angleWrap(targetHeading - currentHeadingDeg);
+            rx = headingPID.calculate(error);
+            isLocking = true;
+        } else {
+            isLocking = false;
+        }
+        
         if (FieldOriented) {
             double botHeading = getHeading();
             double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
             double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
-            // Slightly increase rotational power to mitigate imperfections in strafing
+            // Slightly increase rotation power to counteract added friction during strafing
             applyMotorPower(rotY, rotX * 1.1, rx);
         } else {
             applyMotorPower(y, x, rx);
         }
+        TelemetryUtils.addData("Heading Lock", isLocking ? "ON" : "OFF");
+        TelemetryUtils.addData("Target Heading", targetHeading);
 
     }
 
+    @SuppressLint("DefaultLocale")
     public void logMotorCurrent() {
         double flC = fl.getCurrent(CurrentUnit.AMPS);
         double frC = fr.getCurrent(CurrentUnit.AMPS);
@@ -173,6 +220,12 @@ public class DriveSubsystem {
         if (flC > 10.0 || frC > 10.0 || blC > 10.0 || brC > 10.0) {
             TelemetryUtils.addData("CRITICAL", "SINGLE MOTOR OVERLOAD");
         }
+    }
+
+    public double angleWrap(double degrees) {
+        while (degrees > 180) degrees -= 360;
+        while (degrees < -180) degrees += 360;
+        return degrees;
     }
 
     public double getHeading() {
