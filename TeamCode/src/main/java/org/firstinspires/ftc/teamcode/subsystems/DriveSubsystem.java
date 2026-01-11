@@ -25,22 +25,22 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 public class DriveSubsystem {
 
     // Hardware Variables
-    private DcMotorEx fl, fr, bl, br;
-    private GoBildaPinpointDriver odo;
-    private Limelight3A limelight;
-    private VoltageSensor batteryVoltageSensor;
-    private PIDController headingPID;
-    private final ElapsedTime visionTimer = new ElapsedTime();
-    private double lastKnownTx = 0;
+    private DcMotorEx fl, fr, bl, br; // Front Left, Front Right, Back Left, Back Right motors
+    private GoBildaPinpointDriver odo; // to sense position and heading
+    private Limelight3A limelight; // limelight
+    private VoltageSensor batteryVoltageSensor; // to monitor battery voltage
+    private PIDController headingPID; // heading
+    private final ElapsedTime visionTimer = new ElapsedTime(); //timer
+    private double lastKnownTx = 0; //
     private double targetHeading = 0;
-    private boolean isLocking = false;
+    private boolean isLocking = false; // is the limelight tracking the target
 
     // Configuration Constants (Static for @Configurable)
-    @Sorter(sort = 0) public static boolean FieldOriented = true;
-    @Sorter(sort = 1) public static double kP = 0.04, kI = 0.0, kD = 0.0005;
-    @Sorter(sort = 4) public static double ROT_TOLERANCE_DEG = 2;
-    @Sorter(sort = 5) public static double MIN_ROT_POWER = 0.01;
-    @Sorter(sort = 6) public static double VISION_TIMEOUT_MS = 150;
+    @Sorter(sort = 0) public static boolean FieldOriented = true; // is field oriented enabled
+    @Sorter(sort = 1) public static double kP = 0.04, kI = 0.0, kD = 0.0005;  // pid control constants
+    @Sorter(sort = 4) public static double ROT_TOLERANCE_DEG = 2; // is pid within the tolerance (no wiggle)
+    @Sorter(sort = 5) public static double MIN_ROT_POWER = 0.01; // minimum rotation power to overcome friction
+    @Sorter(sort = 6) public static double VISION_TIMEOUT_MS = 150; // how long to keep using last known target
 
     public void initialize(HardwareMap hwMap) {
         // Motor Setup
@@ -63,31 +63,31 @@ public class DriveSubsystem {
         br.setDirection(DcMotorEx.Direction.REVERSE);
 
         // Pinpoint Setup
-        odo = hwMap.get(GoBildaPinpointDriver.class, "pinpoint");
-        odo.setOffsets(44, 0, DistanceUnit.MM);
-        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+        odo = hwMap.get(GoBildaPinpointDriver.class, "pinpoint"); // get odo
+        odo.setOffsets(44, 0, DistanceUnit.MM); // offsets from (robot center?)
+        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD); // encoder resolution
         odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.REVERSED);
-        odo.resetPosAndIMU();
+        odo.resetPosAndIMU(); //reset odo pos
 
         //Limelight Setup
-        limelight = hwMap.get(Limelight3A.class, "limelight");
+        limelight = hwMap.get(Limelight3A.class, "limelight"); // get limelight
         limelight.pipelineSwitch(0);
-        limelight.start();
+        limelight.start(); // start limelight
 
         // Battery Voltage Sensor
-        batteryVoltageSensor = hwMap.voltageSensor.iterator().next();
+        batteryVoltageSensor = hwMap.voltageSensor.iterator().next(); // init battery sensor
 
         // PID Utils (currently only for heading alignment)
-        headingPID = new PIDController(kP, kI, kD, false);
-        headingPID.setOutputLimits(-1, 1);
+        headingPID = new PIDController(kP, kI, kD, false); // init heading pid
+        headingPID.setOutputMax(1); // max output
     }
 
     public void updateOdo() {
-        odo.update();
-        TelemetryUtils.addData("Odo Status", odo.getDeviceStatus());
+        odo.update(); // update odo readings
+        TelemetryUtils.addData("Odo Status", odo.getDeviceStatus()); // send status to telemetry
 
-        Pose2D pos = odo.getPosition();
-        TelemetryUtils.addData("Odo x pos", pos.getX(DistanceUnit.MM));
+        Pose2D pos = odo.getPosition(); // get current pos
+        TelemetryUtils.addData("Odo x pos", pos.getX(DistanceUnit.MM)); // send positions to telemetry
         TelemetryUtils.addData("Odo y pos", pos.getY(DistanceUnit.MM));
         TelemetryUtils.addData("Odo heading", pos.getHeading(AngleUnit.DEGREES));
     }
@@ -98,22 +98,22 @@ public class DriveSubsystem {
      * @param maxMotorPower The maximum motor power to apply for rotation.
      * @return true if aligned within tolerance, false otherwise.
      */
-    public boolean alignHeadingToAprilTag(double maxMotorPower) {
-        headingPID.setGains(kP, kI, kD);
-        LLResult result = limelight.getLatestResult();
+    public boolean alignHeadingToAprilTag(double maxMotorPower) { // returns a bool: is aligned
+        headingPID.setGains(kP, kI, kD); // update pid gains
+        LLResult result = limelight.getLatestResult(); // gets all of limelight data
 
         double error;
         boolean targetFound;
 
         if (result.isValid()) {
             // if we see the tag Update our "Last Known" data
-            error = -result.getTx();
+            error = -result.getTx(); // how far off the target is from last position
             lastKnownTx = error;
             visionTimer.reset(); // Restart the "stale data" clock
             targetFound = true;
         } else if (visionTimer.milliseconds() < VISION_TIMEOUT_MS) {
             // We LOST the tag, but it was very recent. Use the last known error.
-            error = lastKnownTx;
+            error = lastKnownTx; // keep error as last known
             targetFound = true; // Pretend we still have it for the PID
         } else {
             // Target has been gone too long. Stop moving.
@@ -125,14 +125,14 @@ public class DriveSubsystem {
         double rotPower = headingPID.calculate(error);
 
         // Apply constraints
-        if (Math.abs(rotPower) < MIN_ROT_POWER) rotPower = 0;
-        rotPower = Math.max(-maxMotorPower, Math.min(maxMotorPower, rotPower));
+        if (Math.abs(rotPower) < MIN_ROT_POWER) rotPower = 0; // if power is too small, don't move
+        rotPower = Math.max(-maxMotorPower, Math.min(maxMotorPower, rotPower)); // clamp to max power (if neg, clamp to -max)
 
-        boolean aligned = Math.abs(error) < ROT_TOLERANCE_DEG && result.isValid();
+        boolean aligned = Math.abs(error) < ROT_TOLERANCE_DEG && result.isValid(); // check if aligned
 
-        TelemetryUtils.addData("Vision Status", targetFound ? (result.isValid() ? "TRACKING" : "STALE DATA") : "LOST");
+        TelemetryUtils.addData("Vision Status", targetFound ? (result.isValid() ? "TRACKING" : "STALE DATA") : "LOST"); // send status to telemetry
         // Translation Powers = 0 because only aligning rotationally (for now)
-        applyMotorPower(0, 0, rotPower);
+        applyMotorPower(0, 0, rotPower); // apply power to motors
         return aligned;
     }
 
@@ -141,7 +141,7 @@ public class DriveSubsystem {
      * Helper method to consolidate the motor power math
      *
      */
-    private void applyMotorPower(double y, double x, double rx) {
+    private void applyMotorPower(double y, double x, double rx) { // move with certain y, x, speeds and rotation speed
         double currentVoltage = batteryVoltageSensor.getVoltage();
         // We cap the voltage at 12 to ensure we don't try to "overdrive"
         // when the battery is low, which could cause brownouts.
@@ -155,12 +155,18 @@ public class DriveSubsystem {
         br.setPower((y + x - rx) * scale);
     }
 
+    /**
+     * Main method for driving the robot using a gamepad.
+     * Implements field and robot oriented control and heading lock functionality.
+     *
+     * @param controller The gamepad to read inputs from.
+     */
     public void gamepadDrive(Gamepad controller) {
         // Get raw values and apply deadband/cubing
         double rawX = (Math.abs(controller.left_stick_x) > 0.05) ? controller.left_stick_x : 0;
         double rawY = (Math.abs(controller.left_stick_y) > 0.05) ? -controller.left_stick_y : 0;
         double rawRx = (Math.abs(controller.right_stick_x) > 0.05) ? controller.right_stick_x : 0;
-        // Exponential Shaping (Cubing the inputs)
+        // Exponential Shaping (Cubing the inputs) to make robot nicer to drive
         // Cubing preserves the negative/positive sign automatically
         double x = Math.pow(rawX, 3);
         double y = Math.pow(rawY, 3);
@@ -168,26 +174,26 @@ public class DriveSubsystem {
 
         double currentHeadingDeg = Math.toDegrees(getHeading());
 
-        // Heading Lock Logic
-        if (Math.abs(rx) > 0.01) {
-            // Driver is actively turning: Update target to current heading
-            targetHeading = currentHeadingDeg;
-            isLocking = false;
-        } else if (Math.abs(x) > 0.01 || Math.abs(y) > 0.01) {
-            // Driver is moving but NOT turning: Use PID to maintain heading
-            double error = angleWrap(targetHeading - currentHeadingDeg);
-            rx = headingPID.calculate(error);
-            isLocking = true;
-        } else {
-            isLocking = false;
-        }
+//        // Heading Lock Logic
+//        if (Math.abs(rx) > 0.01) {
+//            // Driver is actively turning: Update target to current heading
+//            targetHeading = currentHeadingDeg;
+//            isLocking = false;
+//        } else if (Math.abs(x) > 0.01 || Math.abs(y) > 0.01) {
+//            // Driver is moving but NOT turning: Use PID to maintain heading
+//            double error = angleWrap(targetHeading - currentHeadingDeg);
+//            rx = headingPID.calculate(error);
+//            isLocking = true;
+//        } else {
+//            isLocking = false;
+//        }
 
         if (FieldOriented) {
             double botHeading = getHeading();
-            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
-            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading); // rotated X
+            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading); // rotated Y
             // Slightly increase rotation power to counteract added friction during strafing
-            applyMotorPower(rotY, rotX * 1.1, rx);
+            applyMotorPower(-rotY, -rotX * 1.1, -rx);
         } else {
             applyMotorPower(y, x, rx);
         }
