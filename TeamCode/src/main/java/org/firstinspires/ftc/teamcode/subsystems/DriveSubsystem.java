@@ -59,8 +59,8 @@ public class DriveSubsystem {
         bl.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         br.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
-        fr.setDirection(DcMotorEx.Direction.REVERSE);
-        br.setDirection(DcMotorEx.Direction.REVERSE);
+        fl.setDirection(DcMotorEx.Direction.REVERSE);
+        bl.setDirection(DcMotorEx.Direction.REVERSE);
 
         // Pinpoint Setup
         odo = hwMap.get(GoBildaPinpointDriver.class, "pinpoint"); // get odo
@@ -132,7 +132,10 @@ public class DriveSubsystem {
 
         TelemetryUtils.addData("Vision Status", targetFound ? (result.isValid() ? "TRACKING" : "STALE DATA") : "LOST"); // send status to telemetry
         // Translation Powers = 0 because only aligning rotationally (for now)
-        applyMotorPower(0, 0, rotPower); // apply power to motors
+        if(targetFound){
+            applyMotorPower(0.5, 0, rotPower); // apply power to motors
+        }
+
         return aligned;
     }
 
@@ -193,7 +196,7 @@ public class DriveSubsystem {
             double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading); // rotated X
             double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading); // rotated Y
             // Slightly increase rotation power to counteract added friction during strafing
-            applyMotorPower(-rotY, -rotX * 1.1, -rx);
+            applyMotorPower(rotY, rotX * 1.1, rx);
         } else {
             applyMotorPower(y, x, rx);
         }
