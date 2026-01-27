@@ -82,6 +82,9 @@ public class DriveSubsystem {
         headingPID.setOutputMax(1); // max output
     }
 
+    public void switchOrientation () {
+        FieldOriented = !FieldOriented;
+    }
     public void updateOdo() {
         odo.update(); // update odo readings
         TelemetryUtils.addData("Odo Status", odo.getDeviceStatus()); // send status to telemetry

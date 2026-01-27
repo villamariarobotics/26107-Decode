@@ -45,8 +45,14 @@ public class MainTeleop extends OpMode {
             robot.drive.gamepadDrive(gamepad1);
         }
 
+        if (gamepad1.x) {
+            robot.drive.switchOrientation();
+        }
+        if (gamepad2.right_bumper){
+            robot.intake.MoveIntakeMotor();
+        }
         // Reset heading logic
-        if (gamepad1.options) {
+        if (gamepad1.start) {
             robot.drive.resetHeading();
         }
 

@@ -9,6 +9,7 @@ import java.util.List;
 public class Robot {
     // Subsystems
     public DriveSubsystem drive = new DriveSubsystem();
+    public IntakeSubsystem intake = new IntakeSubsystem();
 
     // Hardware Hubs for Bulk Reads
     private List<LynxModule> allHubs;
@@ -19,7 +20,8 @@ public class Robot {
 
         // Initialize Drive Subsystem
         drive.initialize(hwMap);
-
+        // Initialize Intake Subsystem
+        intake.initialize(hwMap);
         // Set up Bulk Reads for all REV Hubs
         allHubs = hwMap.getAll(LynxModule.class);
         for (LynxModule hub : allHubs) {
