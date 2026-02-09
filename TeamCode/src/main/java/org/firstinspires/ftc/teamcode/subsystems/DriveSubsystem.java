@@ -34,6 +34,7 @@ public class DriveSubsystem {
     private double lastKnownTx = 0; //
     private double targetHeading = 0;
     private boolean isLocking = false; // is the limelight tracking the target
+    public boolean acceleration = false;
 
     // Configuration Constants (Static for @Configurable)
     @Sorter(sort = 0) public static boolean FieldOriented = true; // is field oriented enabled
@@ -177,6 +178,13 @@ public class DriveSubsystem {
         double x = Math.pow(rawX, 3);
         double y = Math.pow(rawY, 3);
         double rx = Math.pow(rawRx, 3);
+        if (acceleration) {
+
+            x = x/2;
+            y = y/2;
+
+
+        }
 
         double currentHeadingDeg = Math.toDegrees(getHeading());
 

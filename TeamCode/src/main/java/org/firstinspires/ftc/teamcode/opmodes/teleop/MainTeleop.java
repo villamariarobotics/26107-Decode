@@ -48,14 +48,17 @@ public class MainTeleop extends OpMode {
         if (gamepad1.x) {
             robot.drive.switchOrientation();
         }
-        if (gamepad2.right_bumper){
+        if (gamepad2.right_bumper) {
             robot.intake.MoveIntakeMotor();
         }
+
         // Reset heading logic
         if (gamepad1.start) {
             robot.drive.resetHeading();
         }
 
+        robot.intake.MoveOuttakeMotor(gamepad2.left_stick_y);
+        robot.drive.acceleration = gamepad1.right_bumper;
         // Telemetry
         double loopTime = loopTimer.milliseconds();
         loopTimer.reset();
