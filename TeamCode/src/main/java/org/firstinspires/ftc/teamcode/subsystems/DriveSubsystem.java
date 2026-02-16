@@ -13,9 +13,11 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.utils.PIDController;
-
 import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -35,6 +37,7 @@ public class DriveSubsystem {
     private double targetHeading = 0;
     private boolean isLocking = false; // is the limelight tracking the target
     public boolean acceleration = false;
+
 
     // Configuration Constants (Static for @Configurable)
     @Sorter(sort = 0) public static boolean FieldOriented = true; // is field oriented enabled
@@ -137,7 +140,7 @@ public class DriveSubsystem {
         TelemetryUtils.addData("Vision Status", targetFound ? (result.isValid() ? "TRACKING" : "STALE DATA") : "LOST"); // send status to telemetry
         // Translation Powers = 0 because only aligning rotationally (for now)
         if(targetFound){
-            applyMotorPower(0.5, 0, rotPower); // apply power to motors
+            applyMotorPower(0, 0, rotPower); // apply power to motors
         }
 
         return aligned;

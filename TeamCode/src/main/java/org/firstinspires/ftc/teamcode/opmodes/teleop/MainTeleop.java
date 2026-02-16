@@ -58,6 +58,7 @@ public class MainTeleop extends OpMode {
         }
 
         robot.intake.MoveOuttakeMotor(gamepad2.left_stick_y);
+        robot.intake.MoveBeltServo(gamepad2.right_stick_y);
         robot.drive.acceleration = gamepad1.right_bumper;
         // Telemetry
         double loopTime = loopTimer.milliseconds();
