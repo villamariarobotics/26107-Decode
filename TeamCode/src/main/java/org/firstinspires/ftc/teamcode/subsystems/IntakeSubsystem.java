@@ -29,8 +29,13 @@ public class IntakeSubsystem {
     }
 
     public void MoveBeltServo(double power){
-        beltServo1.setPower(power);
-        beltServo2.setPower(power);
+        if (servoRightWay) {
+            beltServo1.setPower(power);
+            beltServo2.setPower(power);
+        } else {
+            beltServo1.setPower(-power);
+            beltServo2.setPower(-power);
+        }
     }
 
 }
