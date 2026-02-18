@@ -8,14 +8,18 @@ public class IntakeSubsystem {
     private DcMotor intakeMotor ;
     private DcMotor outtakeMotor ;
 
-    private CRServo beltServo;
+    private CRServo beltServo1;
+    private CRServo beltServo2;
+    private Boolean servoRightWay = true;
 
     public void initialize(com.qualcomm.robotcore.hardware.HardwareMap hwMap) {
         intakeMotor = hwMap.get(DcMotor.class, "intakeMotor");
         intakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         outtakeMotor = hwMap.get(DcMotor.class, "outtakeMotor");
         outtakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        beltServo = hwMap.get(CRServo.class, "beltServo");
+        beltServo1 = hwMap.get(CRServo.class, "beltServo1");
+        beltServo2 = hwMap.get(CRServo.class, "beltServo2");
+        beltServo2.setDirection(CRServo.Direction.REVERSE);
     }
     public void MoveIntakeMotor(){
         intakeMotor.setPower(1);
@@ -25,7 +29,8 @@ public class IntakeSubsystem {
     }
 
     public void MoveBeltServo(double power){
-        beltServo.setPower(power);
+        beltServo1.setPower(power);
+        beltServo2.setPower(power);
     }
 
 }
