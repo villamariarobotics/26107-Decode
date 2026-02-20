@@ -25,10 +25,10 @@ public class IntakeSubsystem {
     public void runIntake(){
         intakeMotor.setPower(intakeSpeed);
     }
-
     public void runTransfer(){
         transferServo1.setDirection(DcMotorSimple.Direction.FORWARD);
         transferServo2.setDirection(DcMotorSimple.Direction.FORWARD);
+
     }
 
 }

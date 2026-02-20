@@ -34,10 +34,14 @@ public class DriveSubsystem {
     private PIDController headingPID;
     private final ElapsedTime visionTimer = new ElapsedTime();
     private double lastKnownTx = 0;
+    private double lastKnownTy = 0;
+
     private double targetHeading = 0;
     private boolean isLocking = false;
     public boolean acceleration = false;
 
+    public double goalAprilTagYPos = 0.5;
+    public boolean moveToAprilTag = false;
 
     // Configuration Constants (Static for @Configurable)
     @Sorter(sort = 0) public static boolean FieldOriented = true; // is field oriented enabled
@@ -108,21 +112,26 @@ public class DriveSubsystem {
         LLResult result = limelight.getLatestResult(); // gets all of limelight data
 
         double error;
+        double ty;
         boolean targetFound;
 
         if (result.isValid()) {
             // if we see the tag Update our "Last Known" data
             error = -result.getTx(); // how far off the target is from last position
+            ty = result.getTy();
             lastKnownTx = error;
+            lastKnownTy = ty;
             visionTimer.reset(); // Restart the "stale data" clock
             targetFound = true;
         } else if (visionTimer.milliseconds() < VISION_TIMEOUT_MS) {
             // We LOST the tag, but it was very recent. Use the last known error.
             error = lastKnownTx; // keep error as last known
+            ty = lastKnownTy;
             targetFound = true; // Pretend we still have it for the PID
         } else {
             // Target has been gone too long. Stop moving.
             error = 0;
+            ty = 0;
             targetFound = false;
         }
 
@@ -137,6 +146,14 @@ public class DriveSubsystem {
 
         TelemetryUtils.addData("Vision Status", targetFound ? (result.isValid() ? "TRACKING" : "STALE DATA") : "LOST"); // send status to telemetry
         // Translation Powers = 0 because only aligning rotationally (for now)
+
+        double motPower = 0;
+      /*  if (moveToAprilTag) {
+            if (ty<goalAprilTagYPos) {
+                motPower = 0.5;
+            } else if (ty>goalAprilTagYPos)
+        }*/
+        
         if(targetFound){
             applyMotorPower(0, 0, rotPower); // apply power to motors
         }
