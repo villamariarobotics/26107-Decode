@@ -2,30 +2,33 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
 public class IntakeSubsystem {
-    private DcMotor intakeMotor ;
-    private DcMotor outtakeMotor ;
+    private DcMotor intakeMotor;
+    private CRServo transferServo1, transferServo2;
+    public static double intakeSpeed = 0.8;
 
-    private CRServo beltServo;
 
     public void initialize(com.qualcomm.robotcore.hardware.HardwareMap hwMap) {
         intakeMotor = hwMap.get(DcMotor.class, "intakeMotor");
-        intakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        outtakeMotor = hwMap.get(DcMotor.class, "outtakeMotor");
-        outtakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        beltServo = hwMap.get(CRServo.class, "beltServo");
+        intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        intakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        intakeMotor.setDirection(DcMotorEx.Direction.FORWARD);
+
+        transferServo1 = hwMap.get(CRServo.class, "left_intake_servo");
+        transferServo2 = hwMap.get(CRServo.class, "right_intake_servo");
+
     }
-    public void MoveIntakeMotor(){
-        intakeMotor.setPower(1);
-    }
-    public void MoveOuttakeMotor(double y){
-        outtakeMotor.setPower(y);
+    public void runIntake(){
+        intakeMotor.setPower(intakeSpeed);
     }
 
-    public void MoveBeltServo(double power){
-        beltServo.setPower(power);
+    public void runTransfer(){
+        transferServo1.setDirection(DcMotorSimple.Direction.FORWARD);
+        transferServo2.setDirection(DcMotorSimple.Direction.FORWARD);
     }
 
 }

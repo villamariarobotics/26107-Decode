@@ -33,8 +33,6 @@ public class MainTeleop extends OpMode {
         robot.drive.updateOdo();
         robot.drive.logMotorCurrent();
 
-
-
         // Control Logic
 
         // Logic for auto-alignment
@@ -46,10 +44,10 @@ public class MainTeleop extends OpMode {
         }
 
         if (gamepad1.x) {
-            robot.drive.switchOrientation();
+            robot.intake.runTransfer();
         }
         if (gamepad2.right_bumper) {
-            robot.intake.MoveIntakeMotor();
+            robot.intake.runIntake();
         }
 
         // Reset heading logic
@@ -57,8 +55,8 @@ public class MainTeleop extends OpMode {
             robot.drive.resetHeading();
         }
 
-        robot.intake.MoveOuttakeMotor(gamepad2.left_stick_y);
-        robot.intake.MoveBeltServo(gamepad2.right_stick_y);
+//        robot.intake.MoveOuttakeMotor(gamepad2.left_stick_y);
+//        robot.intake.MoveBeltServo(gamepad2.right_stick_y);
         robot.drive.acceleration = gamepad1.right_bumper;
         // Telemetry
         double loopTime = loopTimer.milliseconds();

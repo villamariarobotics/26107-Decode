@@ -27,15 +27,15 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 public class DriveSubsystem {
 
     // Hardware Variables
-    private DcMotorEx fl, fr, bl, br; // Front Left, Front Right, Back Left, Back Right motors
-    private GoBildaPinpointDriver odo; // to sense position and heading
-    private Limelight3A limelight; // limelight
-    private VoltageSensor batteryVoltageSensor; // to monitor battery voltage
-    private PIDController headingPID; // heading
-    private final ElapsedTime visionTimer = new ElapsedTime(); //timer
-    private double lastKnownTx = 0; //
+    private DcMotorEx fl, fr, bl, br;
+    private GoBildaPinpointDriver odo;
+    private Limelight3A limelight;
+    private VoltageSensor batteryVoltageSensor;
+    private PIDController headingPID;
+    private final ElapsedTime visionTimer = new ElapsedTime();
+    private double lastKnownTx = 0;
     private double targetHeading = 0;
-    private boolean isLocking = false; // is the limelight tracking the target
+    private boolean isLocking = false;
     public boolean acceleration = false;
 
 
@@ -67,30 +67,28 @@ public class DriveSubsystem {
         bl.setDirection(DcMotorEx.Direction.REVERSE);
 
         // Pinpoint Setup
-        odo = hwMap.get(GoBildaPinpointDriver.class, "pinpoint"); // get odo
-        odo.setOffsets(44, 0, DistanceUnit.MM); // offsets from (robot center?)
-        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD); // encoder resolution
+        odo = hwMap.get(GoBildaPinpointDriver.class, "pinpoint");
+        odo.setOffsets(44, 0, DistanceUnit.MM); // !ADD NEW ROBOT OFFSETS!!!
+        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.REVERSED);
         odo.resetPosAndIMU(); //reset odo pos
 
         //Limelight Setup
-        limelight = hwMap.get(Limelight3A.class, "limelight"); // get limelight
+        limelight = hwMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
-        limelight.start(); // start limelight
+        limelight.start();
 
         // Battery Voltage Sensor
-        batteryVoltageSensor = hwMap.voltageSensor.iterator().next(); // init battery sensor
+        batteryVoltageSensor = hwMap.voltageSensor.iterator().next();
 
         // PID Utils (currently only for heading alignment)
-        headingPID = new PIDController(kP, kI, kD, false); // init heading pid
-        headingPID.setOutputMax(1); // max output
+        headingPID = new PIDController(kP, kI, kD, false);
+        headingPID.setOutputMax(1);
     }
 
-    public void switchOrientation () {
-        FieldOriented = !FieldOriented;
-    }
+
     public void updateOdo() {
-        odo.update(); // update odo readings
+        odo.update();
         TelemetryUtils.addData("Odo Status", odo.getDeviceStatus()); // send status to telemetry
 
         Pose2D pos = odo.getPosition(); // get current pos
@@ -151,7 +149,7 @@ public class DriveSubsystem {
      * Helper method to consolidate the motor power math
      *
      */
-    private void applyMotorPower(double y, double x, double rx) { // move with certain y, x, speeds and rotation speed
+    private void applyMotorPower(double y, double x, double rx) {
         double currentVoltage = batteryVoltageSensor.getVoltage();
         // We cap the voltage at 12 to ensure we don't try to "overdrive"
         // when the battery is low, which could cause brownouts.
@@ -182,11 +180,8 @@ public class DriveSubsystem {
         double y = Math.pow(rawY, 3);
         double rx = Math.pow(rawRx, 3);
         if (acceleration) {
-
             x = x/2;
             y = y/2;
-
-
         }
 
         double currentHeadingDeg = Math.toDegrees(getHeading());
@@ -249,6 +244,11 @@ public class DriveSubsystem {
         while (degrees > 180) degrees -= 360;
         while (degrees < -180) degrees += 360;
         return degrees;
+    }
+
+
+    public void switchOrientation () {
+        FieldOriented = !FieldOriented;
     }
 
     public double getHeading() {

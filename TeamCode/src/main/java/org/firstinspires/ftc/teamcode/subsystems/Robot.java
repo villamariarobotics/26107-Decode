@@ -10,6 +10,7 @@ public class Robot {
     // Subsystems
     public DriveSubsystem drive = new DriveSubsystem();
     public IntakeSubsystem intake = new IntakeSubsystem();
+    public ShooterSubsystem shooter = new ShooterSubsystem();
 
     // Hardware Hubs for Bulk Reads
     private List<LynxModule> allHubs;
@@ -22,6 +23,8 @@ public class Robot {
         drive.initialize(hwMap);
         // Initialize Intake Subsystem
         intake.initialize(hwMap);
+        // Initialize Shooter Subsystem
+        shooter.initialize(hwMap);
         // Set up Bulk Reads for all REV Hubs
         allHubs = hwMap.getAll(LynxModule.class);
         for (LynxModule hub : allHubs) {
