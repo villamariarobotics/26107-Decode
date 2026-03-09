@@ -3,6 +3,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.subsystems.Robot;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
 
@@ -27,41 +28,71 @@ public class MainTeleop extends OpMode {
 
     @Override
     public void loop() {
-
-        // Refresh Data
+        // 1. Refresh Data & Drive (Runs every loop)
         robot.clearCache();
         robot.drive.updateOdo();
-        robot.drive.logMotorCurrent();
 
-        // Control Logic
-
-        // Logic for auto-alignment
         if (gamepad1.a) {
             robot.drive.alignHeadingToAprilTag(1.0);
         } else {
-            // Normal driving
             robot.drive.gamepadDrive(gamepad1);
         }
 
-        if (gamepad1.x) {
-            robot.intake.runTransfer();
-        }
-        if (gamepad2.right_bumper) {
-            robot.intake.runIntake();
+        if (gamepad1.xWasPressed()) {
+            robot.drive.switchOrientation();
         }
 
-        // Reset heading logic
+        // 2. Transfer Logic (Independent)
+        if (gamepad2.b) {
+            robot.intake.runTransfer();
+        } else if (gamepad2.x) {
+            robot.intake.retractTransfer();
+        } else {
+            robot.intake.stopTransfer(); // Stop if B is released
+        }
+
+        // 3. Intake Logic (Independent)
+        if (gamepad2.a) {
+            robot.intake.runIntake();
+        } else if (gamepad2.left_bumper) {
+            robot.intake.retractIntake();
+        } else {
+            robot.intake.stopIntake(); // Stop if A is released
+        }
+
+        // 4. Shooter Logic (Independent)
+        if (gamepad2.y) {
+            robot.shooter.runShooter(2000, true);
+        } else if (gamepad2.right_bumper) {
+            robot.shooter.runShooter(1000, false);
+        } else {
+            robot.shooter.runShooter(0, true); // Stop if Y is released
+        }
+        // Modulate shooter speed with direction pad
+        if (gamepad2.dpad_down) {
+            robot.shooter.speed -= 0.0025;
+            if (robot.shooter.speed <= 0) {
+                robot.shooter.speed = 0;
+            }
+        } else if (gamepad2.dpad_up) {
+            robot.shooter.speed += 0.0025;
+            if (robot.shooter.speed >= 1) {
+                robot.shooter.speed = 1;
+            }
+        }
+
+        // 5. Utility Logic
         if (gamepad1.start) {
             robot.drive.resetHeading();
         }
-
-//        robot.intake.MoveOuttakeMotor(gamepad2.left_stick_y);
-//        robot.intake.MoveBeltServo(gamepad2.right_stick_y);
         robot.drive.acceleration = gamepad1.right_bumper;
-        // Telemetry
+
+        // 6. Telemetry (Moves the "Finish Line" to the end)
         double loopTime = loopTimer.milliseconds();
         loopTimer.reset();
         TelemetryUtils.addData("Loop Hz", 1000.0 / loopTime);
-        TelemetryUtils.update(); // Move to bottom
+        TelemetryUtils.addData("speed", robot.shooter.speed);
+        TelemetryUtils.update();
     }
+
 }

@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import org.firstinspires.ftc.teamcode.utils.PIDController;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
@@ -10,20 +11,27 @@ public class ShooterSubsystem {
     private DcMotorEx shooterMotor;
     private PIDController velocityPID;
     private final double TICKS_PER_ROTATION = 28;
+    public double speed = 1;
 
     public static double kP = 0.04, kI = 0.0, kD = 0.0005;
 
     public void initialize(com.qualcomm.robotcore.hardware.HardwareMap hwMap) {
         shooterMotor = hwMap.get(DcMotorEx.class, "shooterMotor");
         shooterMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        shooterMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        shooterMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
         velocityPID = new PIDController(kP, kI, kD);
         velocityPID.setOutputMax(1);
     }
 
-    public void runShooter(double RPM) {
+    public void runShooter(double RPM, boolean forward) {
         velocityPID.setGains(kP, kI, kD);  // Update PID gains live from Dashboard
-        double targetVelocity = RPM * TICKS_PER_ROTATION;
+        int direction = 1;
+        if (!forward) {
+            direction = -1;
+        }
+        double targetVelocity = RPM * speed * direction / TICKS_PER_ROTATION;
         double currentVelocity = shooterMotor.getVelocity() / TICKS_PER_ROTATION;
 
         double power = velocityPID.output(targetVelocity, currentVelocity);

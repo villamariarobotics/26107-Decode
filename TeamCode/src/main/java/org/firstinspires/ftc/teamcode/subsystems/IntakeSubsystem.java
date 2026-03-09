@@ -25,10 +25,28 @@ public class IntakeSubsystem {
     public void runIntake(){
         intakeMotor.setPower(intakeSpeed);
     }
-    public void runTransfer(){
-        transferServo1.setDirection(DcMotorSimple.Direction.FORWARD);
-        transferServo2.setDirection(DcMotorSimple.Direction.FORWARD);
 
+    public void retractIntake() {
+        intakeMotor.setPower(-intakeSpeed);
+    }
+
+    public void stopIntake(){
+        intakeMotor.setPower(0);
+    }
+    public void runTransfer(){
+        transferServo1.setPower(-1);
+        transferServo2.setPower(1);
+
+    }
+
+    public void retractTransfer(){
+        transferServo1.setPower(1);
+        transferServo2.setPower(-1);
+    }
+
+    public void stopTransfer() {
+        transferServo1.setPower(0);
+        transferServo2.setPower(0);
     }
 
 }
