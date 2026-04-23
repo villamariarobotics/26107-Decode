@@ -1,4 +1,6 @@
 package org.firstinspires.ftc.teamcode.opmodes.teleop;
+import com.bylazar.configurables.annotations.Configurable;
+import com.bylazar.configurables.annotations.Sorter;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -7,9 +9,11 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.subsystems.Robot;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtils;
 
-
+@Configurable
 @TeleOp(name = "Main Teleop")
 public class MainTeleop extends OpMode {
+
+    @Sorter(sort = 0)  public static double teargetVelocity = 2500;
     private ElapsedTime loopTimer = new ElapsedTime();
     // Using the Robot container instead of individual subsystems
     Robot robot = new Robot();
@@ -32,18 +36,18 @@ public class MainTeleop extends OpMode {
         robot.clearCache();
         robot.drive.updateOdo();
 
-        if (gamepad1.a) {
-            robot.drive.alignHeadingToAprilTag(1.0);
-        } else {
+//        if (gamepad1.a) {
+//            robot.drive.alignHeadingToAprilTag(1.0);
+//        } else {
             robot.drive.gamepadDrive(gamepad1);
-        }
+//        }
 
         if (gamepad1.xWasPressed()) {
             robot.drive.switchOrientation();
         }
 
         // 2. Transfer Logic (Independent)
-        if (gamepad2.b) {
+        if (gamepad1.b) {
             robot.intake.runTransfer();
         } else if (gamepad2.x) {
             robot.intake.retractTransfer();
@@ -52,7 +56,7 @@ public class MainTeleop extends OpMode {
         }
 
         // 3. Intake Logic (Independent)
-        if (gamepad2.a) {
+        if (gamepad1.a) {
             robot.intake.runIntake();
         } else if (gamepad2.left_bumper) {
             robot.intake.retractIntake();
@@ -61,25 +65,27 @@ public class MainTeleop extends OpMode {
         }
 
         // 4. Shooter Logic (Independent)
-        if (gamepad2.y) {
-            robot.shooter.runShooter(2000, true);
-        } else if (gamepad2.right_bumper) {
-            robot.shooter.runShooter(1000, false);
+        robot.shooter.setRPM(teargetVelocity);
+        if (gamepad1.y) {
+            robot.shooter.run();
+                TelemetryUtils.addData("targetRPM", teargetVelocity);
         } else {
-            robot.shooter.runShooter(0, true); // Stop if Y is released
+            robot.shooter.stop();
+            TelemetryUtils.addData("targetRPM", 0);
+
         }
-        // Modulate shooter speed with direction pad
-        if (gamepad2.dpad_down) {
-            robot.shooter.speed -= 0.0025;
-            if (robot.shooter.speed <= 0) {
-                robot.shooter.speed = 0;
-            }
-        } else if (gamepad2.dpad_up) {
-            robot.shooter.speed += 0.0025;
-            if (robot.shooter.speed >= 1) {
-                robot.shooter.speed = 1;
-            }
-        }
+//        // Modulate shooter speed with direction pad
+//        if (gamepad2.dpad_down) {
+//            robot.shooter.speed -= 0.0025;
+//            if (robot.shooter.speed <= 0) {
+//                robot.shooter.speed = 0;
+//            }
+//        } else if (gamepad2.dpad_up) {
+//            robot.shooter.speed += 0.0025;
+//            if (robot.shooter.speed >= 1) {
+//                robot.shooter.speed = 1;
+//            }
+//        }
 
         // 5. Utility Logic
         if (gamepad1.start) {
@@ -91,7 +97,8 @@ public class MainTeleop extends OpMode {
         double loopTime = loopTimer.milliseconds();
         loopTimer.reset();
         TelemetryUtils.addData("Loop Hz", 1000.0 / loopTime);
-        TelemetryUtils.addData("speed", robot.shooter.speed);
+
+        TelemetryUtils.addData("speed", robot.shooter.getCurrentRPM());
         TelemetryUtils.update();
     }
 
