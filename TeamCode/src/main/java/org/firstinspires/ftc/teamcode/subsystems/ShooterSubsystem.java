@@ -21,7 +21,7 @@ public class ShooterSubsystem {
     private boolean lastReadyState = false;
 
     @Sorter(sort = 0) static double kP = 0.005, kI = 0.01, kD = 0.0002, kF = 0.0005;
-    @Sorter(sort = 1) static double RPM_TOLERANCE = 50.0;
+    @Sorter(sort = 1) static double RPM_TOLERANCE = 200;
 
 
     public void initialize(com.qualcomm.robotcore.hardware.HardwareMap hwMap) {
@@ -41,6 +41,7 @@ public class ShooterSubsystem {
      */
     public void setRPM(double rpm) {
         this.targetTicksPerSec = (rpm * TICKS_PER_ROTATION) / 60.0;
+        TelemetryUtils.addData("targetRPM", rpm);
     }
 
     /**
@@ -91,6 +92,7 @@ public class ShooterSubsystem {
         setRPM(0);
         shooterMotor.setPower(0);
         velocityPID.reset(); // Clear integral sum when stopping
+        TelemetryUtils.addData("targetRPM", 0);
     }
 
     // Helper to see how close you are to your target in Telemetry
