@@ -14,8 +14,6 @@ import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.utils.PIDController;
 import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 import com.qualcomm.robotcore.hardware.VoltageSensor;
@@ -44,7 +42,7 @@ public class DriveSubsystem {
     public boolean moveToAprilTag = false;
 
     // Configuration Constants (Static for @Configurable)
-    @Sorter(sort = 0) public static boolean FieldOriented = true; // is field oriented enabled
+    @Sorter(sort = 0) public static boolean FieldOriented = false; // is field oriented enabled
     @Sorter(sort = 1) public static double kP = 0.04, kI = 0.0, kD = 0.0005;  // pid control constants
     @Sorter(sort = 4) public static double ROT_TOLERANCE_DEG = 2; // is pid within the tolerance (no wiggle)
     @Sorter(sort = 5) public static double MIN_ROT_POWER = 0.01; // minimum rotation power to overcome friction
@@ -67,6 +65,7 @@ public class DriveSubsystem {
         bl.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         br.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
+        br.setDirection(DcMotorEx.Direction.REVERSE);
         fl.setDirection(DcMotorEx.Direction.REVERSE);
         bl.setDirection(DcMotorEx.Direction.REVERSE);
 
@@ -117,7 +116,7 @@ public class DriveSubsystem {
 
         if (result.isValid()) {
             // if we see the tag Update our "Last Known" data
-            error = -result.getTx(); // how far off the target is from last position
+            error = result.getTx(); // how far off the target is from last position
             ty = result.getTy();
             lastKnownTx = error;
             lastKnownTy = ty;
@@ -153,9 +152,11 @@ public class DriveSubsystem {
                 motPower = 0.5;
             } else if (ty>goalAprilTagYPos)
         }*/
-        
+
         if(targetFound){
-            applyMotorPower(0, 0, rotPower); // apply power to motors
+            applyMotorPower(0, 0, rotPower);
+        } else {
+            applyMotorPower(0, 0, 0); // Explicitly command motors to stop
         }
 
         return aligned;
